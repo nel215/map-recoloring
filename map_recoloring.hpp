@@ -131,15 +131,28 @@ class MapRecoloring {
     }
 
     vector<Region> regions;
+    vector<int> usedColor(R, 0);
+    double bestUsedColor = 0;
+    double currentUsedColor = 0;
+    double bestRecolor = 0;
+    double currentRecolor = 0;
     for (int i=0; i < R; i++) {
       auto &g = graph[i];
       sort(g.begin(), g.end());
       g.erase(unique(g.begin(), g.end()), g.end());
       regions.push_back(Region(i, graph[i]));
+      usedColor[i]++;
+      bestUsedColor += 1;
+      currentUsedColor += 1;
+      bestRecolor += cost[i][i];
+      currentRecolor += cost[i][i];
     }
 
-    cerr << "R:" << R << endl;
+    cerr << "H:" << H << "\tW:" << W << "\tR:" << R << endl;
+    vector<int> res(R);
+    int iteration = 0;
     while (getTime()-startTime < timeLimit) {
+      iteration += 1;
       vector<double> regionWeight(R+1, 0);
       for (int i=0; i < R; i++) {
         regionWeight[i+1] = regionWeight[i] + regions[i].link.size();
@@ -171,17 +184,62 @@ class MapRecoloring {
       int targetColor = lower_bound(
         colorWeight.begin(), colorWeight.end(), targetColorWeight) - colorWeight.begin() - 1;
       // cerr << "targetColor:" << targetColor << endl;
+      double targetUsedColor = currentUsedColor;
+      if (usedColor[region.color] == 1) {
+        targetUsedColor -= 1;
+      }
+      if (usedColor[targetColor] == 0) {
+        targetUsedColor += 1;
+      }
+      double targetRecolor = currentRecolor;
+      targetRecolor -= cost[targetRegionIndex][region.color];
+      targetRecolor += cost[targetRegionIndex][targetColor];
 
-      double diff = cost[targetRegionIndex][targetColor] - cost[targetRegionIndex][region.color];
-      if (diff < 0) {
+      double prev = bestUsedColor/currentUsedColor * bestRecolor/currentRecolor;
+      double next = bestUsedColor/targetUsedColor * bestRecolor/targetRecolor;
+      // cerr << prev << " " << next << endl;
+      if (next > prev) {
+        usedColor[region.color] -= 1;
+        usedColor[targetColor] += 1;
+        currentUsedColor = targetUsedColor;
+        currentRecolor = targetRecolor;
+        region.color = targetColor;
+        bestRecolor = targetRecolor;
+        bestUsedColor = targetUsedColor;
+        for (int i=0; i < R; i++) {
+          res[i] = regions[i].color;
+        }
+      } else if (next > rng.uniform()) {
+        usedColor[region.color] -= 1;
+        usedColor[targetColor] += 1;
+        currentUsedColor = targetUsedColor;
+        currentRecolor = targetRecolor;
         region.color = targetColor;
       }
     }
 
-    vector<int> res;
-    for (int i=0; i < R; i++) {
-      res.push_back(regions[i].color);
-    }
+    // debug
+    // for (int y=0; y < H; y++) {
+    //   for (int x=0; x < W; x++) {
+    //     int i = y*W+x;
+    //     int r = _regions[i];
+    //     cerr << '0' + r;
+    //   }
+    //   cerr << endl;
+    // }
+    // cerr << endl;
+    // for (int y=0; y < H; y++) {
+    //   for (int x=0; x < W; x++) {
+    //     int i = y*W+x;
+    //     int r = _regions[i];
+    //     cerr << (regions[r].color >= 10 ? '*' : '0' + regions[r].color);
+    //   }
+    //   cerr << endl;
+    // }
+
+    cerr << "iteration:" << iteration << endl;
+    cerr << "bestUsedColor:" << bestUsedColor << endl;
+    cerr << "bestRecolor:" << bestRecolor<< endl;
     return res;
   }
 };
