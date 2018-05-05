@@ -225,9 +225,10 @@ class MapRecoloring {
     }
   };
   vector<int> beamSearch() {
-    vector<vector<uint32_t> > hashSeed(R, vector<uint32_t>(C+1));
+    const int maxColor = 10;
+    vector<vector<uint32_t> > hashSeed(R, vector<uint32_t>(maxColor+1));
     for (int i=0; i < R; i++) {
-      for (int j=0; j < C+1; j++) hashSeed[i][j] = rng.rand();
+      for (int j=0; j <= maxColor; j++) hashSeed[i][j] = rng.rand();
     }
     vector<priority_queue<Node> > queues(R+1, priority_queue<Node>());
     vector<set<uint32_t> > pushed(R+1, set<uint32_t>());
@@ -244,7 +245,7 @@ class MapRecoloring {
         vector<int> usedRegion(R, -1);
         set<int> usedColors;
         while (node.prev != -1) {
-          hash ^= hashSeed[node.region][min(node.color, C)];
+          hash ^= hashSeed[node.region][min(node.color, maxColor)];
           usedColors.insert(node.color);
           usedRegion[node.region] = node.color;
           node = history[node.prev];
@@ -254,35 +255,47 @@ class MapRecoloring {
         history.push_back(node);
         que.pop();
 
-        // select region
-        int bestIdx = -1;
+        // sort region
+        priority_queue<pair<double, int> > regionQue;
         for (int i=0; i < R; i++) {
           if (usedRegion[i] >= 0) continue;
-          if (bestIdx == -1 || degree[bestIdx] < degree[i]) {
-            bestIdx = i;
+          // upper is worse for deletion
+          double score = -degree[i];
+          if (regionQue.size() >= 20) {
+            if (regionQue.top().first > score) {
+              regionQue.pop();
+              regionQue.push(make_pair(score, i));
+            }
+          } else {
+            regionQue.push(make_pair(score, i));
           }
         }
-        auto &region = regions[bestIdx];
 
         // select color
-        for (int i=0; i < R; i++) {
-          uint32_t nextHash = hash ^ hashSeed[bestIdx][min(i, C)];
-          if (pushed[q+1].count(nextHash) > 0) continue;
+        while (!regionQue.empty()) {
+          auto idx = regionQue.top().second;
+          auto &region = regions[idx];
+          regionQue.pop();
 
-          bool sameColor = false;
-          for (auto adjRegion : region.link) {
-            if (usedRegion[adjRegion] == i) sameColor = true;
+          for (int i=0; i < R; i++) {
+            uint32_t nextHash = hash ^ hashSeed[idx][min(i, maxColor)];
+            if (pushed[q+1].count(nextHash) > 0) continue;
+
+            bool sameColor = false;
+            for (auto adjRegion : region.link) {
+              if (usedRegion[adjRegion] == i) sameColor = true;
+            }
+            if (sameColor) continue;
+
+            int recolor = node.recolor + cost[idx][i];
+            int usedColor = node.usedColor;
+            if (usedColors.count(i) == 0) usedColor++;
+            auto next = Node(idx, i, prev, usedColor, recolor);
+            auto &nextQue = queues[q+1];
+            nextQue.push(next);
+            pushed[q+1].insert(nextHash);
+            if (i >= C) break;
           }
-          if (sameColor) continue;
-
-          int recolor = node.recolor + cost[bestIdx][i];
-          int usedColor = node.usedColor;
-          if (usedColors.count(i) == 0) usedColor++;
-          auto next = Node(bestIdx, i, prev, usedColor, recolor);
-          auto &nextQue = queues[q+1];
-          nextQue.push(next);
-          pushed[q+1].insert(nextHash);
-          if (i >= C) break;
         }
       }
     }
