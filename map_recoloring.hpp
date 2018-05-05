@@ -207,6 +207,83 @@ class MapRecoloring {
     cerr << "bestRecolor:" << bestRecolor<< endl;
     return res;
   }
+  struct Node {
+    int region;
+    int color;
+    int prev;
+    int usedColor;
+    int recolor;
+    Node(int _region, int _color, int _prev, int _usedColor, int _recolor) {
+      region = _region;
+      color = _color;
+      prev = _prev;
+      usedColor = _usedColor;
+      recolor = _recolor;
+    }
+    bool operator<(const Node &n)const {
+      return usedColor*recolor < n.usedColor*n.recolor;
+    }
+  };
+  vector<int> beamSearch() {
+    vector<priority_queue<Node> > queues(R+1, priority_queue<Node>());
+    vector<Node> history;
+    queues[0].push(Node(-1, -1, -1, 0, 0));
+    while (getTime()-startTime < timeLimit) {
+      for (int q=0; q < R; q++) {
+        auto &que = queues[q];
+        if (que.empty()) continue;
+
+        // reconstruct
+        auto node = que.top();
+        vector<int> usedRegion(R, -1);
+        set<int> usedColors;
+        while (node.prev != -1) {
+          usedColors.insert(node.color);
+          usedRegion[node.region] = node.color;
+          node = history[node.prev];
+        }
+        node = que.top();
+        int prev = history.size();
+        history.push_back(node);
+        que.pop();
+
+        // select region
+        int bestIdx = -1;
+        for (int i=0; i < R; i++) {
+          if (usedRegion[i] >= 0) continue;
+          if (bestIdx == -1 || degree[bestIdx] < degree[i]) {
+            bestIdx = i;
+          }
+        }
+        auto &region = regions[bestIdx];
+
+        // select color
+        for (int i=0; i < R; i++) {
+          bool sameColor = false;
+          for (auto adjRegion : region.link) {
+            if (usedRegion[adjRegion] == i) sameColor = true;
+          }
+          if (sameColor) continue;
+          int recolor = node.recolor + cost[bestIdx][i];
+          int usedColor = node.usedColor;
+          if (usedColors.count(i) == 0) usedColor++;
+          auto next = Node(bestIdx, i, prev, usedColor, recolor);
+          auto &nextQue = queues[q+1];
+          nextQue.push(next);
+          if (i >= C) break;
+        }
+      }
+    }
+
+    cerr << "beam:" << queues[R].size() << endl;
+    vector<int> res(R);
+    auto node = queues[R].top();
+    while (node.prev != -1) {
+      res[node.region] = node.color;
+      node = history[node.prev];
+    }
+    return res;
+  }
   vector<int> recolor(int _H, vector<int> _regions, vector<int> _oldColors) {
     startTime = getTime();
     H = _H;
@@ -255,7 +332,7 @@ class MapRecoloring {
       regions.push_back(Region(i, graph[i]));
     }
     cerr << "H:" << H << "\tW:" << W << "\tR:" << R << endl;
-    return sa();
+    return beamSearch();
   }
 };
 #endif  // MAP_RECOLORING_HPP_
