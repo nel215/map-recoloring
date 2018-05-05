@@ -221,7 +221,7 @@ class MapRecoloring {
       recolor = _recolor;
     }
     bool operator<(const Node &n)const {
-      return usedColor*recolor < n.usedColor*n.recolor;
+      return usedColor*recolor > n.usedColor*n.recolor;
     }
   };
   vector<int> beamSearch() {
