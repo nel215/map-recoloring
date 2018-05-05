@@ -333,16 +333,16 @@ class MapRecoloring {
         if (_oldColors[i] == j) cost[r][j]--;
       }
     }
-    degree.resize(R);
-    for (int i=0; i < R; i++) {
-      degree[i] = graph[i].size();
-    }
     regions.clear();
     for (int i=0; i < R; i++) {
       auto &g = graph[i];
       sort(g.begin(), g.end());
       g.erase(unique(g.begin(), g.end()), g.end());
       regions.push_back(Region(i, graph[i]));
+    }
+    degree.resize(R);
+    for (int i=0; i < R; i++) {
+      degree[i] = graph[i].size();
     }
     cerr << "H:" << H << "\tW:" << W << "\tR:" << R << endl;
     return beamSearch();
