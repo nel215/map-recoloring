@@ -225,7 +225,12 @@ class MapRecoloring {
     }
   };
   vector<int> beamSearch() {
+    vector<vector<uint32_t> > hashSeed(R, vector<uint32_t>(C+1));
+    for (int i=0; i < R; i++) {
+      for (int j=0; j < C+1; j++) hashSeed[i][j] = rng.rand();
+    }
     vector<priority_queue<Node> > queues(R+1, priority_queue<Node>());
+    vector<set<uint32_t> > pushed(R+1, set<uint32_t>());
     vector<Node> history;
     queues[0].push(Node(-1, -1, -1, 0, 0));
     while (getTime()-startTime < timeLimit) {
@@ -235,9 +240,11 @@ class MapRecoloring {
 
         // reconstruct
         auto node = que.top();
+        uint32_t hash = 0;
         vector<int> usedRegion(R, -1);
         set<int> usedColors;
         while (node.prev != -1) {
+          hash ^= hashSeed[node.region][min(node.color, C)];
           usedColors.insert(node.color);
           usedRegion[node.region] = node.color;
           node = history[node.prev];
@@ -259,23 +266,29 @@ class MapRecoloring {
 
         // select color
         for (int i=0; i < R; i++) {
+          uint32_t nextHash = hash ^ hashSeed[bestIdx][min(i, C)];
+          if (pushed[q+1].count(nextHash) > 0) continue;
+
           bool sameColor = false;
           for (auto adjRegion : region.link) {
             if (usedRegion[adjRegion] == i) sameColor = true;
           }
           if (sameColor) continue;
+
           int recolor = node.recolor + cost[bestIdx][i];
           int usedColor = node.usedColor;
           if (usedColors.count(i) == 0) usedColor++;
           auto next = Node(bestIdx, i, prev, usedColor, recolor);
           auto &nextQue = queues[q+1];
           nextQue.push(next);
+          pushed[q+1].insert(nextHash);
           if (i >= C) break;
         }
       }
     }
 
     cerr << "beam:" << queues[R].size() << endl;
+    cerr << "pushed:" << pushed[R].size() << endl;
     vector<int> res(R);
     auto node = queues[R].top();
     while (node.prev != -1) {
