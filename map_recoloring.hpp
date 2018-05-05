@@ -89,58 +89,24 @@ struct Region {
 
 class MapRecoloring {
   int H, W, R, C;
+  double startTime;
+  vector<int> area;
+  vector<vector<int> > graph;
+  vector<int> degree;
+  vector<vector<int> > cost;
+  vector<Region> regions;
   bool isin(int y, int x) {
     return 0 <= y && y < H && 0 <= x && x < W;
   }
 
  public:
-  vector<int> recolor(int _H, vector<int> _regions, vector<int> _oldColors) {
-    double startTime = getTime();
-    H = _H;
-    W = _regions.size() / H;
-    R = 0;
-    C = 0;
-    for (int i=0; i < H*W; i++) {
-      R = max(R, _regions[i]+1);
-      C = max(C, _oldColors[i]+1);
-    }
-    vector<int> area(R, 0);
-    for (int i=0; i < H*W; i++) {
-      area[_regions[i]]++;
-    }
-    vector<vector<int> > graph(R, vector<int>());
-    vector<vector<int> > cost(R);
-    for (int i=0; i < R; i++) {
-      cost[i] = vector<int>(R, area[i]);
-    }
-    for (int i=0; i < H*W; i++) {
-      int r = _regions[i];
-      int y = i/W;
-      int x = i%W;
-      for (int j=0; j < 4; j++) {
-        int ny = y + dy[j];
-        int nx = x + dx[j];
-        if (!isin(ny, nx)) continue;
-        if (r == _regions[ny*W+nx]) continue;
-        graph[r].push_back(_regions[ny*W+nx]);
-        graph[_regions[ny*W+nx]].push_back(r);
-      }
-      for (int j=0; j < C; j++) {
-        if (_oldColors[i] == j) cost[r][j]--;
-      }
-    }
-
-    vector<Region> regions;
+  vector<int> sa() {
     vector<int> usedColor(R, 0);
     double bestUsedColor = 0;
     double currentUsedColor = 0;
     double bestRecolor = 0;
     double currentRecolor = 0;
     for (int i=0; i < R; i++) {
-      auto &g = graph[i];
-      sort(g.begin(), g.end());
-      g.erase(unique(g.begin(), g.end()), g.end());
-      regions.push_back(Region(i, graph[i]));
       usedColor[i]++;
       bestUsedColor += 1;
       currentUsedColor += 1;
@@ -148,7 +114,6 @@ class MapRecoloring {
       currentRecolor += cost[i][i];
     }
 
-    cerr << "H:" << H << "\tW:" << W << "\tR:" << R << endl;
     vector<int> res(R);
     int iteration = 0;
     while (getTime()-startTime < timeLimit) {
@@ -241,6 +206,56 @@ class MapRecoloring {
     cerr << "bestUsedColor:" << bestUsedColor << endl;
     cerr << "bestRecolor:" << bestRecolor<< endl;
     return res;
+  }
+  vector<int> recolor(int _H, vector<int> _regions, vector<int> _oldColors) {
+    startTime = getTime();
+    H = _H;
+    W = _regions.size() / H;
+    R = 0;
+    C = 0;
+    for (int i=0; i < H*W; i++) {
+      R = max(R, _regions[i]+1);
+      C = max(C, _oldColors[i]+1);
+    }
+    area.assign(R, 0);
+    for (int i=0; i < H*W; i++) {
+      area[_regions[i]]++;
+    }
+    graph.assign(R, vector<int>());
+    cost.assign(R, vector<int>());
+    for (int i=0; i < R; i++) {
+      cost[i] = vector<int>(R, area[i]);
+    }
+    for (int i=0; i < H*W; i++) {
+      int r = _regions[i];
+      int y = i/W;
+      int x = i%W;
+      for (int j=0; j < 4; j++) {
+        int ny = y + dy[j];
+        int nx = x + dx[j];
+        if (!isin(ny, nx)) continue;
+        int nr = _regions[ny*W+nx];
+        if (r == nr) continue;
+        graph[r].push_back(nr);
+        graph[nr].push_back(r);
+      }
+      for (int j=0; j < C; j++) {
+        if (_oldColors[i] == j) cost[r][j]--;
+      }
+    }
+    degree.resize(R);
+    for (int i=0; i < R; i++) {
+      degree[i] = graph[i].size();
+    }
+    regions.clear();
+    for (int i=0; i < R; i++) {
+      auto &g = graph[i];
+      sort(g.begin(), g.end());
+      g.erase(unique(g.begin(), g.end()), g.end());
+      regions.push_back(Region(i, graph[i]));
+    }
+    cerr << "H:" << H << "\tW:" << W << "\tR:" << R << endl;
+    return sa();
   }
 };
 #endif  // MAP_RECOLORING_HPP_
