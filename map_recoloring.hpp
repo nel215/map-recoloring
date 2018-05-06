@@ -274,7 +274,11 @@ class MapRecoloring {
     while (getTime()-startTime < timeLimit) {
       for (int q=0; q < R; q++) {
         auto &que = queues[q];
+        while (!que.empty() && bestNode <= que.getMin()) {
+          que.deleteMin();
+        }
         if (que.empty()) continue;
+        // cerr << q << " " << que.size() << endl;
         tmp++;
 
         // reconstruct
