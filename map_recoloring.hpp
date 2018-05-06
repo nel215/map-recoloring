@@ -118,8 +118,8 @@ class MapRecoloring {
       return usedColor*recolor > n.usedColor*n.recolor;
     }
   };
-  int getRegionScore(int filled, int degree) {
-    return filled*100 + degree;
+  int getRegionScore(int filled, int degree, int diffCost) {
+    return (filled*100 + degree)*40000 + diffCost;
   }
   vector<int> beamSearch() {
     vector<priority_queue<Node> > queues(R+1, priority_queue<Node>());
@@ -161,7 +161,7 @@ class MapRecoloring {
           int minCost = minRegionColorCost[i][filled&((1 << C)-1)];
           minCostSum += minCost;
           filled = __builtin_popcount(filled);
-          double score = getRegionScore(filled, degree[i]);
+          double score = getRegionScore(filled, degree[i], area[i]-minCost);
           if (bestScore < score) {
             bestScore = score;
             bestIdx = i;
