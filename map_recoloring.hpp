@@ -34,32 +34,40 @@ struct Node {
   int prev;
   int usedColor;
   int recolor;
+  int remDegree;
   int payed;
   int remArea;
-  Node(int _region, int _color, int _prev, int _usedColor, int _recolor, int _payed, int _remArea) {
+  Node(int _region, int _color, int _prev, int _usedColor, int _recolor, int _remDegree, int _payed, int _remArea) {
     region = _region;
     color = _color;
     prev = _prev;
     usedColor = _usedColor;
     recolor = _recolor;
+    remDegree = _remDegree;
     payed = _payed;
     remArea = _remArea;
   }
   bool operator<(const Node &n)const {
     if (usedColor*recolor == n.usedColor*n.recolor) {
-      if (payed == n.payed) {
-        return remArea < n.remArea;
+      if (remDegree == n.remDegree) {
+        if (payed == n.payed) {
+          return remArea < n.remArea;
+        }
+        return payed < n.payed;
       }
-      return payed < n.payed;
+      return remDegree < n.remDegree;
     }
     return usedColor*recolor < n.usedColor*n.recolor;
   }
   bool operator<=(const Node &n)const {
     if (usedColor*recolor == n.usedColor*n.recolor) {
-      if (payed == n.payed) {
-        return remArea <= n.remArea;
+      if (remDegree == n.remDegree) {
+        if (payed == n.payed) {
+          return remArea <= n.remArea;
+        }
+        return payed < n.payed;
       }
-      return payed < n.payed;
+      return remDegree < n.remDegree;
     }
     return usedColor*recolor < n.usedColor*n.recolor;
   }
@@ -282,11 +290,16 @@ class MapRecoloring {
     return (filled*100 + degree)*40000 + diffCost;
   }
   vector<int> beamSearch() {
+    int degreeSum = 0;
+    for (int i=0; i < R; i++) {
+      degreeSum += regions[i].link.size();
+    }
     vector<MinMaxHeap<Node> > queues(R+1, MinMaxHeap<Node>());
     vector<Node> history;
-    queues[0].push(Node(-1, -1, -1, 0, 0, H*W, H*W));
+    queues[0].push(Node(-1, -1, -1, 0, 0, degreeSum, H*W, H*W));
     int tmp = 0;
-    auto bestNode = Node(-1, -1, -1, 32, H*W, H*W, H*W);
+
+    auto bestNode = Node(-1, -1, -1, 32, H*W, degreeSum, H*W, H*W);
     while (getTime()-startTime < timeLimit) {
       for (int q=0; q < R; q++) {
         auto &que = queues[q];
@@ -300,10 +313,12 @@ class MapRecoloring {
         // reconstruct
         auto node = que.getMin();
         int payed = H*W;
+        int remDegree = degreeSum;
         vector<int> usedRegion(R, -1);
         int usedColorSet = 0;
         while (node.prev != -1) {
           payed -= cost[node.region][node.color];
+          remDegree -= regions[node.region].link.size();
           usedColorSet |= 1 << node.color;
           usedRegion[node.region] = node.color;
           node = history[node.prev];
@@ -343,6 +358,7 @@ class MapRecoloring {
 
         // select color
         auto &region = regions[bestIdx];
+        remDegree -= regions[bestIdx].link.size();
         remArea -= area[bestIdx];
         for (int i=0; i < 32; i++) {
           bool sameColor = false;
@@ -354,7 +370,7 @@ class MapRecoloring {
           int recolor = node.recolor + cost[bestIdx][i];
           int usedColor = node.usedColor;
           if ((usedColorSet & (1 << i)) == 0) usedColor++;
-          auto next = Node(bestIdx, i, prev, usedColor, recolor, payed-cost[bestIdx][i], remArea);
+          auto next = Node(bestIdx, i, prev, usedColor, recolor, remDegree, payed-cost[bestIdx][i], remArea);
           if (next > bestNode) continue;
           auto &nextQue = queues[q+1];
           if (nextQue.size() < 100) {
