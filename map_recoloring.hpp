@@ -28,6 +28,167 @@ inline double getTime() {
     return (((uint64_t)hi << 32) | lo) / ticks_per_sec;
 }
 
+struct Node {
+  int region;
+  int color;
+  int prev;
+  int usedColor;
+  int recolor;
+  Node(int _region, int _color, int _prev, int _usedColor, int _recolor) {
+    region = _region;
+    color = _color;
+    prev = _prev;
+    usedColor = _usedColor;
+    recolor = _recolor;
+  }
+  bool operator<(const Node &n)const {
+    return usedColor*recolor < n.usedColor*n.recolor;
+  }
+  bool operator<=(const Node &n)const {
+    return usedColor*recolor <= n.usedColor*n.recolor;
+  }
+  bool operator>(const Node &n)const {
+    return n < (*this);
+  }
+  bool operator>=(const Node &n)const {
+    return n <= (*this);
+  }
+};
+
+// min-max heap
+template<class T>
+class MinMaxHeap{
+  std::vector<T> data;
+
+  inline int getParent(int i) const {
+    return (i - 1) >> 1;
+  }
+  inline int getGrandParent(int i)const {
+    return (i - 3) >> 2;
+  }
+  inline bool hasParent(int i)const {
+    return i - 1 >= 0;
+  }
+  inline bool hasGrandParent(int i)const {
+    return i - 3 >= 0;
+  }
+  inline bool isMinLevel(int i)const {
+    bool res = true;
+    for (int j = 0; j < i; j = 2 * j + 2) {
+      res = !res;
+    }
+    return res;
+  }
+  inline bool isChild(int i, int c) {
+    return 2 * i + 1 <= c && c <= 2 * i + 2;
+  }
+  inline bool hasChild(int i) {
+    return 2 * i + 1 < data.size();
+  }
+  // trickleDown
+  void trickleDownMin(int i) {
+    for (size_t j = i, minIdx; hasChild(j); j = minIdx) {
+      minIdx = 2 * j + 1;
+      for (int g = 4 * j + 3, last = min(4 * j + 7, data.size()); g < last; g++) {
+        if (data[g] < data[minIdx])minIdx = g;
+      }
+      if (2 * j + 2 < data.size() && data[2 * j + 2] <= data[minIdx])minIdx = 2 * j + 2;
+      if (data[minIdx] >= data[j])break;
+      std::swap(data[minIdx], data[j]);
+      if (isChild(j, minIdx))break;
+      if (data[minIdx] > data[getParent(minIdx)]) {
+        std::swap(data[minIdx], data[getParent(minIdx)]);
+      }
+    }
+  }
+  void trickleDownMax(int i) {
+    for (size_t j = i, maxIdx; hasChild(j); j = maxIdx) {
+      maxIdx = 2 * j + 1;
+      for (int g = 4 * j + 3, last = min(4 * j + 7, data.size()); g < last; g++) {
+        if (data[g] > data[maxIdx])maxIdx = g;
+      }
+      if (2 * j + 2 < data.size() && data[2 * j + 2] >= data[maxIdx])maxIdx = 2 * j + 2;
+      if (data[maxIdx] <= data[j])break;
+      std::swap(data[maxIdx], data[j]);
+      if (isChild(j, maxIdx))break;
+      if (data[maxIdx] < data[getParent(maxIdx)]) {
+        std::swap(data[maxIdx], data[getParent(maxIdx)]);
+      }
+    }
+  }
+  void trickleDown(int i) {
+    if (isMinLevel(i)) {
+      trickleDownMin(i);
+    } else {
+      trickleDownMax(i);
+    }
+  }
+  // bubbleUp
+  void bubbleUpMin(int i) {
+    for (int j = i; hasGrandParent(j) && data[j] < data[getGrandParent(j)]; j = getGrandParent(j)) {
+      std::swap(data[j], data[getGrandParent(j)]);
+    }
+  }
+  void bubbleUpMax(int i) {
+    for (int j = i; hasGrandParent(j) && data[j] > data[getGrandParent(j)]; j = getGrandParent(j)) {
+      std::swap(data[j], data[getGrandParent(j)]);
+    }
+  }
+
+  void bubbleUp(int i) {
+    if (isMinLevel(i)) {
+      if (hasParent(i) && data[i] > data[getParent(i)]) {
+        std::swap(data[i], data[getParent(i)]);
+        bubbleUpMax(getParent(i));
+      } else {
+        bubbleUpMin(i);
+      }
+    } else {
+      if (hasParent(i) && data[i] < data[getParent(i)]) {
+        std::swap(data[i], data[getParent(i)]);
+        bubbleUpMin(getParent(i));
+      } else {
+        bubbleUpMax(i);
+      }
+    }
+  }
+
+ public:
+  int size() {
+      return data.size();
+  }
+
+  bool empty() {
+      return data.empty();
+  }
+
+  void push(T x) {
+    data.push_back(x);
+    bubbleUp(data.size() - 1);
+  }
+  void deleteMin() {
+    std::swap(data[0], data[data.size() - 1]);
+    data.pop_back();
+    trickleDown(0);
+  }
+  void deleteMax() {
+    if (data.size() == 1)return deleteMin();
+    int maxIdx = 1;
+    if (data.size() >= 3 && data[2] > data[1]) maxIdx = 2;
+    std::swap(data[maxIdx], data[data.size() - 1]);
+    data.pop_back();
+    trickleDown(maxIdx);
+  }
+
+  T getMin() const {
+    return data[0];
+  }
+
+  T getMax() const {
+    return data.size() >= 3 ? std::max<T>(data[1], data[2]) : data[data.size() == 2];
+  }
+};
+
 // rng
 class XorShift {
   uint32_t x;
@@ -101,28 +262,11 @@ class MapRecoloring {
   }
 
  public:
-  struct Node {
-    int region;
-    int color;
-    int prev;
-    int usedColor;
-    int recolor;
-    Node(int _region, int _color, int _prev, int _usedColor, int _recolor) {
-      region = _region;
-      color = _color;
-      prev = _prev;
-      usedColor = _usedColor;
-      recolor = _recolor;
-    }
-    bool operator<(const Node &n)const {
-      return usedColor*recolor > n.usedColor*n.recolor;
-    }
-  };
   int getRegionScore(int filled, int degree, int diffCost) {
     return (filled*100 + degree)*40000 + diffCost;
   }
   vector<int> beamSearch() {
-    vector<priority_queue<Node> > queues(R+1, priority_queue<Node>());
+    vector<MinMaxHeap<Node> > queues(R+1, MinMaxHeap<Node>());
     vector<Node> history;
     queues[0].push(Node(-1, -1, -1, 0, 0));
     int tmp = 0;
@@ -134,7 +278,7 @@ class MapRecoloring {
         tmp++;
 
         // reconstruct
-        auto node = que.top();
+        auto node = que.getMin();
         vector<int> usedRegion(R, -1);
         int usedColorSet = 0;
         while (node.prev != -1) {
@@ -142,10 +286,10 @@ class MapRecoloring {
           usedRegion[node.region] = node.color;
           node = history[node.prev];
         }
-        node = que.top();
+        node = que.getMin();
         int prev = history.size();
         history.push_back(node);
-        que.pop();
+        que.deleteMin();
 
         // select region
         double bestScore = 0;
@@ -184,22 +328,27 @@ class MapRecoloring {
           int usedColor = node.usedColor;
           if ((usedColorSet & (1 << i)) == 0) usedColor++;
           auto next = Node(bestIdx, i, prev, usedColor, recolor);
-          if (next < bestNode) continue;
+          if (next > bestNode) continue;
           auto &nextQue = queues[q+1];
-          nextQue.push(next);
+          if (nextQue.size() < 100) {
+            nextQue.push(next);
+          } else if (next < nextQue.getMax()) {
+            nextQue.deleteMax();
+            nextQue.push(next);
+          }
           if (i >= C) break;
         }
       }
       // TODO: optimization
       auto &lastQue = queues[R];
       if (!lastQue.empty()) {
-        auto node = lastQue.top();
-        if (bestNode < node) {
+        auto node = lastQue.getMin();
+        if (bestNode > node) {
           bestNode = node;
           cerr << "improve" << " " << node.usedColor << endl;
         }
       }
-      while (!lastQue.empty()) lastQue.pop();
+      // while (!lastQue.empty()) lastQue.deleteMin();
     }
 
     cerr << "exec:" << tmp << endl;
