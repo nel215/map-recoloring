@@ -117,7 +117,7 @@ class MapRecoloring {
       return usedColor*recolor > n.usedColor*n.recolor;
     }
   };
-  double getRegionScore(int filled, int degree) {
+  int getRegionScore(int filled, int degree) {
     return filled*100 + degree;
   }
   vector<int> beamSearch() {
@@ -125,6 +125,7 @@ class MapRecoloring {
     vector<Node> history;
     queues[0].push(Node(-1, -1, -1, 0, 0));
     int tmp = 0;
+    auto bestNode = Node(-1, -1, -1, 32, H*W);
     while (getTime()-startTime < timeLimit) {
       for (int q=0; q < R; q++) {
         auto &que = queues[q];
@@ -146,11 +147,10 @@ class MapRecoloring {
         que.pop();
 
         // select region
-        int bestIdx = -1;
         double bestScore = 0;
+        int bestIdx = 0;
         for (int i=0; i < R; i++) {
           if (usedRegion[i] >= 0) continue;
-          // upper is worse for deletion
           int filled = 0;
           for (auto r : regions[i].link) {
             if (usedRegion[r] == -1) continue;
@@ -158,9 +158,9 @@ class MapRecoloring {
           }
           filled = __builtin_popcount(filled);
           double score = getRegionScore(filled, degree[i]);
-          if (bestIdx == -1 || bestScore < score) {
-            bestIdx = i;
+          if (bestScore < score) {
             bestScore = score;
+            bestIdx = i;
           }
         }
 
@@ -177,25 +177,28 @@ class MapRecoloring {
           int usedColor = node.usedColor;
           if (usedColors.count(i) == 0) usedColor++;
           auto next = Node(bestIdx, i, prev, usedColor, recolor);
+          if (next < bestNode) continue;
           auto &nextQue = queues[q+1];
-          if (q == R-1) {
-            if (!nextQue.empty() && nextQue.top() < next) {
-              cerr << "improve" << " " << usedColor << endl;
-            }
-          }
           nextQue.push(next);
           if (i >= C) break;
         }
       }
+      // TODO: optimization
+      auto &lastQue = queues[R];
+      if (!lastQue.empty()) {
+        auto node = lastQue.top();
+        if (bestNode < node) {
+          bestNode = node;
+          cerr << "improve" << " " << node.usedColor << endl;
+        }
+      }
+      while (!lastQue.empty()) lastQue.pop();
     }
 
-    for (int i=R-3; i <= R; i++) {
-      cerr << i << endl;
-      cerr << "beam:" << queues[i].size() << endl;
-    }
     cerr << "exec:" << tmp << endl;
+    cerr << "bestUsed:" << bestNode.usedColor << "\tbestRecolor:" << bestNode.recolor << endl;
     vector<int> res(R);
-    auto node = queues[R].top();
+    auto node = bestNode;
     while (node.prev != -1) {
       res[node.region] = node.color;
       node = history[node.prev];
