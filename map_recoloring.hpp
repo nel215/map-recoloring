@@ -166,7 +166,7 @@ class MapRecoloring {
 
         // select color
         auto &region = regions[bestIdx];
-        for (int i=0; i < R; i++) {
+        for (int i=0; i < 32; i++) {
           bool sameColor = false;
           for (auto adjRegion : region.link) {
             if (usedRegion[adjRegion] == i) sameColor = true;
