@@ -48,28 +48,34 @@ struct Node {
     remArea = _remArea;
   }
   bool operator<(const Node &n)const {
-    if (usedColor*recolor == n.usedColor*n.recolor) {
-      if (remDegree == n.remDegree) {
-        if (payed == n.payed) {
-          return remArea < n.remArea;
+    if (usedColor == n.usedColor) {
+      if (recolor == n.recolor) {
+        if (remDegree == n.remDegree) {
+          if (payed == n.payed) {
+           return remArea < n.remArea;
+          }
+          return payed < n.payed;
         }
-        return payed < n.payed;
+        return remDegree < n.remDegree;
       }
-      return remDegree < n.remDegree;
+      return recolor < n.recolor;
     }
-    return usedColor*recolor < n.usedColor*n.recolor;
+    return usedColor < n.usedColor;
   }
   bool operator<=(const Node &n)const {
-    if (usedColor*recolor == n.usedColor*n.recolor) {
-      if (remDegree == n.remDegree) {
-        if (payed == n.payed) {
-          return remArea <= n.remArea;
+    if (usedColor == n.usedColor) {
+      if (recolor == n.recolor) {
+        if (remDegree == n.remDegree) {
+          if (payed == n.payed) {
+           return remArea <= n.remArea;
+          }
+          return payed < n.payed;
         }
-        return payed < n.payed;
+        return remDegree < n.remDegree;
       }
-      return remDegree < n.remDegree;
+      return recolor < n.recolor;
     }
-    return usedColor*recolor < n.usedColor*n.recolor;
+    return usedColor < n.usedColor;
   }
   bool operator>(const Node &n)const {
     return n < (*this);
@@ -373,7 +379,7 @@ class MapRecoloring {
           auto next = Node(bestIdx, i, prev, usedColor, recolor, remDegree, payed-cost[bestIdx][i], remArea);
           if (next > bestNode) continue;
           auto &nextQue = queues[q+1];
-          if (nextQue.size() < 100) {
+          if (nextQue.size() < 2000) {
             nextQue.push(next);
           } else if (next < nextQue.getMax()) {
             nextQue.deleteMax();
