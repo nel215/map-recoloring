@@ -136,9 +136,9 @@ class MapRecoloring {
         // reconstruct
         auto node = que.top();
         vector<int> usedRegion(R, -1);
-        set<int> usedColors;
+        int usedColorSet = 0;
         while (node.prev != -1) {
-          usedColors.insert(node.color);
+          usedColorSet |= 1 << node.color;
           usedRegion[node.region] = node.color;
           node = history[node.prev];
         }
@@ -182,7 +182,7 @@ class MapRecoloring {
 
           int recolor = node.recolor + cost[bestIdx][i];
           int usedColor = node.usedColor;
-          if (usedColors.count(i) == 0) usedColor++;
+          if ((usedColorSet & (1 << i)) == 0) usedColor++;
           auto next = Node(bestIdx, i, prev, usedColor, recolor);
           if (next < bestNode) continue;
           auto &nextQue = queues[q+1];
