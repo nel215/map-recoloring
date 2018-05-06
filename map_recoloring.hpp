@@ -34,17 +34,25 @@ struct Node {
   int prev;
   int usedColor;
   int recolor;
-  Node(int _region, int _color, int _prev, int _usedColor, int _recolor) {
+  int remArea;
+  Node(int _region, int _color, int _prev, int _usedColor, int _recolor, int _remArea) {
     region = _region;
     color = _color;
     prev = _prev;
     usedColor = _usedColor;
     recolor = _recolor;
+    remArea = _remArea;
   }
   bool operator<(const Node &n)const {
+    if (usedColor*recolor == n.usedColor*n.recolor) {
+      return remArea < n.remArea;
+    }
     return usedColor*recolor < n.usedColor*n.recolor;
   }
   bool operator<=(const Node &n)const {
+    if (usedColor*recolor == n.usedColor*n.recolor) {
+      return remArea <= n.remArea;
+    }
     return usedColor*recolor <= n.usedColor*n.recolor;
   }
   bool operator>(const Node &n)const {
@@ -268,13 +276,13 @@ class MapRecoloring {
   vector<int> beamSearch() {
     vector<MinMaxHeap<Node> > queues(R+1, MinMaxHeap<Node>());
     vector<Node> history;
-    queues[0].push(Node(-1, -1, -1, 0, 0));
+    queues[0].push(Node(-1, -1, -1, 0, 0, H*W));
     int tmp = 0;
-    auto bestNode = Node(-1, -1, -1, 32, H*W);
+    auto bestNode = Node(-1, -1, -1, 32, H*W, H*W);
     while (getTime()-startTime < timeLimit) {
       for (int q=0; q < R; q++) {
         auto &que = queues[q];
-        while (!que.empty() && bestNode <= que.getMin()) {
+        while (!que.empty() && bestNode < que.getMin()) {
           que.deleteMin();
         }
         if (que.empty()) continue;
@@ -299,8 +307,12 @@ class MapRecoloring {
         double bestScore = 0;
         int bestIdx = 0;
         int minCostSum = 0;
+        int remArea = H*W;
         for (int i=0; i < R; i++) {
-          if (usedRegion[i] >= 0) continue;
+          if (usedRegion[i] >= 0) {
+            remArea -= area[i];
+            continue;
+          }
           int filled = 0;
           for (auto r : regions[i].link) {
             if (usedRegion[r] == -1) continue;
@@ -321,6 +333,7 @@ class MapRecoloring {
 
         // select color
         auto &region = regions[bestIdx];
+        remArea -= area[bestIdx];
         for (int i=0; i < 32; i++) {
           bool sameColor = false;
           for (auto adjRegion : region.link) {
@@ -331,7 +344,7 @@ class MapRecoloring {
           int recolor = node.recolor + cost[bestIdx][i];
           int usedColor = node.usedColor;
           if ((usedColorSet & (1 << i)) == 0) usedColor++;
-          auto next = Node(bestIdx, i, prev, usedColor, recolor);
+          auto next = Node(bestIdx, i, prev, usedColor, recolor, remArea);
           if (next > bestNode) continue;
           auto &nextQue = queues[q+1];
           if (nextQue.size() < 100) {
