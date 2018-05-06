@@ -94,6 +94,7 @@ class MapRecoloring {
   vector<vector<int> > graph;
   vector<int> degree;
   vector<vector<int> > cost;
+  vector<vector<int> > minRegionColorCost;
   vector<Region> regions;
   bool isin(int y, int x) {
     return 0 <= y && y < H && 0 <= x && x < W;
@@ -149,6 +150,7 @@ class MapRecoloring {
         // select region
         double bestScore = 0;
         int bestIdx = 0;
+        int minCostSum = 0;
         for (int i=0; i < R; i++) {
           if (usedRegion[i] >= 0) continue;
           int filled = 0;
@@ -156,12 +158,17 @@ class MapRecoloring {
             if (usedRegion[r] == -1) continue;
             filled |= 1 <<  usedRegion[r];
           }
+          int minCost = minRegionColorCost[i][filled&((1 << C)-1)];
+          minCostSum += minCost;
           filled = __builtin_popcount(filled);
           double score = getRegionScore(filled, degree[i]);
           if (bestScore < score) {
             bestScore = score;
             bestIdx = i;
           }
+        }
+        if (node.usedColor >= bestNode.usedColor && node.recolor + minCostSum >= bestNode.recolor) {
+          continue;
         }
 
         // select color
@@ -239,6 +246,16 @@ class MapRecoloring {
       }
       for (int j=0; j < C; j++) {
         if (_oldColors[i] == j) cost[r][j]--;
+      }
+    }
+    minRegionColorCost.assign(R, vector<int>((1 << C), 1<<30));
+    for (int i=0; i < R; i++) {
+      for (int b=0; b < 1 << C; b++) {
+        minRegionColorCost[i][b] = cost[i][C];
+        for (int c=0; c < C; c++) {
+          if ((b >> c) & 1) continue;
+          minRegionColorCost[i][b] = min(minRegionColorCost[i][b], cost[i][c]);
+        }
       }
     }
     regions.clear();
