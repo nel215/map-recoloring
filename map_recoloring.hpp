@@ -224,28 +224,25 @@ class MapRecoloring {
       return usedColor*recolor > n.usedColor*n.recolor;
     }
   };
+  double getRegionScore(int filled, int degree) {
+    return filled*100 + degree;
+  }
   vector<int> beamSearch() {
-    const int maxColor = 10;
-    vector<vector<uint32_t> > hashSeed(R, vector<uint32_t>(maxColor+1));
-    for (int i=0; i < R; i++) {
-      for (int j=0; j <= maxColor; j++) hashSeed[i][j] = rng.rand();
-    }
     vector<priority_queue<Node> > queues(R+1, priority_queue<Node>());
-    vector<set<uint32_t> > pushed(R+1, set<uint32_t>());
     vector<Node> history;
     queues[0].push(Node(-1, -1, -1, 0, 0));
+    int tmp = 0;
     while (getTime()-startTime < timeLimit) {
       for (int q=0; q < R; q++) {
         auto &que = queues[q];
         if (que.empty()) continue;
+        tmp++;
 
         // reconstruct
         auto node = que.top();
-        uint32_t hash = 0;
         vector<int> usedRegion(R, -1);
         set<int> usedColors;
         while (node.prev != -1) {
-          hash ^= hashSeed[node.region][min(node.color, maxColor)];
           usedColors.insert(node.color);
           usedRegion[node.region] = node.color;
           node = history[node.prev];
@@ -255,53 +252,55 @@ class MapRecoloring {
         history.push_back(node);
         que.pop();
 
-        // sort region
-        priority_queue<pair<double, int> > regionQue;
+        // select region
+        int bestIdx = -1;
+        double bestScore = 0;
         for (int i=0; i < R; i++) {
           if (usedRegion[i] >= 0) continue;
           // upper is worse for deletion
-          double score = -degree[i];
-          if (regionQue.size() >= 20) {
-            if (regionQue.top().first > score) {
-              regionQue.pop();
-              regionQue.push(make_pair(score, i));
-            }
-          } else {
-            regionQue.push(make_pair(score, i));
+          int filled = 0;
+          for (auto r : regions[i].link) {
+            if (usedRegion[r] == -1) continue;
+            filled |= 1 <<  usedRegion[r];
+          }
+          filled = __builtin_popcount(filled);
+          double score = getRegionScore(filled, degree[i]);
+          if (bestIdx == -1 || bestScore < score) {
+            bestIdx = i;
+            bestScore = score;
           }
         }
 
         // select color
-        while (!regionQue.empty()) {
-          auto idx = regionQue.top().second;
-          auto &region = regions[idx];
-          regionQue.pop();
-
-          for (int i=0; i < R; i++) {
-            uint32_t nextHash = hash ^ hashSeed[idx][min(i, maxColor)];
-            if (pushed[q+1].count(nextHash) > 0) continue;
-
-            bool sameColor = false;
-            for (auto adjRegion : region.link) {
-              if (usedRegion[adjRegion] == i) sameColor = true;
-            }
-            if (sameColor) continue;
-
-            int recolor = node.recolor + cost[idx][i];
-            int usedColor = node.usedColor;
-            if (usedColors.count(i) == 0) usedColor++;
-            auto next = Node(idx, i, prev, usedColor, recolor);
-            auto &nextQue = queues[q+1];
-            nextQue.push(next);
-            pushed[q+1].insert(nextHash);
-            if (i >= C) break;
+        auto &region = regions[bestIdx];
+        for (int i=0; i < R; i++) {
+          bool sameColor = false;
+          for (auto adjRegion : region.link) {
+            if (usedRegion[adjRegion] == i) sameColor = true;
           }
+          if (sameColor) continue;
+
+          int recolor = node.recolor + cost[bestIdx][i];
+          int usedColor = node.usedColor;
+          if (usedColors.count(i) == 0) usedColor++;
+          auto next = Node(bestIdx, i, prev, usedColor, recolor);
+          auto &nextQue = queues[q+1];
+          if (q == R-1) {
+            if (!nextQue.empty() && nextQue.top() < next) {
+              cerr << "improve" << " " << usedColor << endl;
+            }
+          }
+          nextQue.push(next);
+          if (i >= C) break;
         }
       }
     }
 
-    cerr << "beam:" << queues[R].size() << endl;
-    cerr << "pushed:" << pushed[R].size() << endl;
+    for (int i=R-3; i <= R; i++) {
+      cerr << i << endl;
+      cerr << "beam:" << queues[i].size() << endl;
+    }
+    cerr << "exec:" << tmp << endl;
     vector<int> res(R);
     auto node = queues[R].top();
     while (node.prev != -1) {
