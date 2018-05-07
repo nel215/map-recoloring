@@ -53,7 +53,7 @@ struct Node {
         if (recolor == n.recolor) {
           if (remDegree == n.remDegree) {
             if (payed == n.payed) {
-             return remArea < n.remArea;
+              return remArea < n.remArea;
             }
             return payed < n.payed;
           }
@@ -71,7 +71,7 @@ struct Node {
         if (recolor == n.recolor) {
           if (remDegree == n.remDegree) {
             if (payed == n.payed) {
-             return remArea <= n.remArea;
+              return remArea <= n.remArea;
             }
             return payed < n.payed;
           }
