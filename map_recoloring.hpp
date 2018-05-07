@@ -402,6 +402,7 @@ class MapRecoloring {
 
     cerr << "exec:" << tmp << endl;
     cerr << "bestUsed:" << bestNode.usedColor << "\tbestRecolor:" << bestNode.recolor << endl;
+    cerr << "bestScore:" << bestNode.usedColor*bestNode.recolor << endl;
     vector<int> res(R);
     auto node = bestNode;
     while (node.prev != -1) {
