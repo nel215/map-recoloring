@@ -48,34 +48,40 @@ struct Node {
     remArea = _remArea;
   }
   bool operator<(const Node &n)const {
-    if (usedColor == n.usedColor) {
-      if (recolor == n.recolor) {
-        if (remDegree == n.remDegree) {
-          if (payed == n.payed) {
-           return remArea < n.remArea;
+    if (usedColor*recolor == n.usedColor*n.recolor) {
+      if (usedColor == n.usedColor) {
+        if (recolor == n.recolor) {
+          if (remDegree == n.remDegree) {
+            if (payed == n.payed) {
+             return remArea < n.remArea;
+            }
+            return payed < n.payed;
           }
-          return payed < n.payed;
+          return remDegree < n.remDegree;
         }
-        return remDegree < n.remDegree;
+        return recolor < n.recolor;
       }
-      return recolor < n.recolor;
+      return usedColor < n.usedColor;
     }
-    return usedColor < n.usedColor;
+    return usedColor*recolor < n.usedColor*n.recolor;
   }
   bool operator<=(const Node &n)const {
-    if (usedColor == n.usedColor) {
-      if (recolor == n.recolor) {
-        if (remDegree == n.remDegree) {
-          if (payed == n.payed) {
-           return remArea <= n.remArea;
+    if (usedColor*recolor == n.usedColor*n.recolor) {
+      if (usedColor == n.usedColor) {
+        if (recolor == n.recolor) {
+          if (remDegree == n.remDegree) {
+            if (payed == n.payed) {
+             return remArea <= n.remArea;
+            }
+            return payed < n.payed;
           }
-          return payed < n.payed;
+          return remDegree < n.remDegree;
         }
-        return remDegree < n.remDegree;
+        return recolor < n.recolor;
       }
-      return recolor < n.recolor;
+      return usedColor < n.usedColor;
     }
-    return usedColor < n.usedColor;
+    return usedColor*recolor < n.usedColor*n.recolor;
   }
   bool operator>(const Node &n)const {
     return n < (*this);
