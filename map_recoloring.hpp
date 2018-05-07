@@ -299,7 +299,7 @@ class MapRecoloring {
 
  public:
   int getRegionScore(int filled, int degree, int diffCost) {
-    return (filled*100 + degree)*40000 + diffCost;
+    return (filled*50000 + degree) + diffCost;
   }
   vector<int> beamSearch() {
     int degreeSum = 0;
