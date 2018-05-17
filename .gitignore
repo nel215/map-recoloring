@@ -1,0 +1,6 @@
+*.png
+log/*
+a.out
+.python-version
+callgrind.*
+*.class
